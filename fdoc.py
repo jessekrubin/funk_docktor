@@ -1,100 +1,74 @@
 # -*- coding: utf-8 -*
-import inspect
-from os import *
-from os import path, walk
+from itertools import chain
+from os import getcwd, path
+import argparse
+from pupy.decorations import tictoc
 
-before_path = path.join(getcwd(), 'before.py')
-import docktor_before
+CD = getcwd()
 
-
-def _line_doctor(line):
-    """takes a line
-    looks for a pattern
-    returns indents/spaces, start of pattern
+def fmt_line(line, col, phillup=False):
     """
-    first = line.find('#')
-    if first > -1 and line[first + 2] == '#':
-        for i in range(first, 0, -1):
-            if line[i] != ' ':
-                return line[:i - 1], line[first:]
-    # return None, None
-    return None
 
-
-def format_line(code, comment, maxlen):
-    """Format a single line
-
-    :param code:
-    :param comment:
-    :param maxlen:
+    :param line:
+    :param col:
     :return:
+
+    # >>> format_line([])
     """
-    return code + '  ' + ' ' * (maxlen - len(code)) + comment
+    if len(line) == 1:
+        code = line[0]
+        if phillup: return ''.join((code, ' ' * (1 + col - len(code)), '#$#'))
+        else: return code
+    if len(line) == 2:
+        code, comment = line
+        return ''.join((code, ' ' * (1 + col - len(code)), '#$#', comment))
 
-def funk_docktor(fname, funk):
-    lines, iline_no = inspect.getsourcelines(funk)
-    codes = []
-    comments = []
-    for iline in range(len(lines)):
-        doct = _line_doctor(lines[iline])
-        if doct is not None:
-            code, comment = _line_doctor(lines[iline])
-            codes.append(code)
-            comments.append(comment)
+@tictoc()
+def funk_docktor(unfunky, clusters=True, phillup=False):
+    """Formats a multi-line string"""
+    if clusters:
+        pass
+    else:
+        lines = unfunky.replace('# $#', '#$#').split('\n')
+        furst = min(i for i, line in enumerate(lines)
+                    if '#$#' in line)
+        last = max(i for i, line in enumerate(lines)
+                   if '#$#' in line)
+        doc_lines = [line.split("#$#")
+                     for line in lines[furst:last + 1]]
+        maxcodelength = max(len(line[0]) for line in doc_lines
+                            if len(line) == 2)
+        lgne = [fmt_line(line,
+                         col=maxcodelength,
+                         phillup=phillup)
+                for line in doc_lines]
+        if phillup and doc_lines[-1][0] == '':
+            lgne[-1] = ''
 
-    mlen = max(len(code) for code in codes)
-    formed = []
-    for i in range(len(codes)):
-        if comments[i] is None:
-            # formed.append('\n')
-            # formed.append('\n')
-            formed.append(lines[i])
-        else:
-            formed.append(format_line(codes[i], comments[i], mlen))
-    print('\n__BEFORE__')
-    print(''.join(lines))
-    print('__AFTER__')
-    print(''.join(formed))
-    print("")
-    print("")
-    print("")
+        return '\n'.join(chain.from_iterable((lines[:furst], lgne, lines[last + 1:])))
 
-    # mfirst = max(firsts)+2
-
-
-funks = inspect.getmembers(docktor_before, inspect.isfunction)
-print(funks, type(funks))
-
-for name, f in funks:
-    funk_docktor(name, f)
-
-print(inspect.getcomments(docktor_before))
 def main():
+    parser = argparse.ArgumentParser(description='~ ~ ~ Funk ~ DOCKTOR ~ ~ ~ ')
+    parser.add_argument('-p', '--phillup',
+                        action="store_true",
+                        dest='phillup',
+                        default=False)
+    parser.add_argument('-i', '--inplace',
+                        action="store_true",
+                        dest='inplace',
+                        default=False)
+    parser.add_argument('-f', '--file',
+                        type=argparse.FileType('r'),
+                        nargs='+')
 
-
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser = argparse.ArgumentParser(description='Demo')
-    # parser.add_argument('-r', '--recursive', action='store_true', default=False, help='Search through subfolders')
-    # print(before_path)
-    parser = argparse.ArgumentParser()
-    parser.add_argument('filename')
     args = parser.parse_args()
-    parser.add_argument('--verbose',
-                        action='store_true',
-                        help='verbose flag' )
-    a = parser.__dict__()
-    print(a)
+    for file in args.file:
+        abs_fpath = path.join(CD, file.name)
+        fdir, fname = path.split(abs_fpath)
+        fname = fname.replace('.py', '.[FDOC].py')
+        with open(path.join(fdir, fname), 'w') as docktored:
+            docktored.write(funk_docktor(file.read(), clusters=False))
+
+
 if __name__ == '__main__':
     main()
-    # a = dir(docktor_before)
-    # print(a)
-
-    # for path in full_paths:
-    #         if os.path.isfile(path):
-    #             fileName, fileExt = os.path.splitext(path)
-    #             if args.extension == '' or args.extension == fileExt:
-    #                 files.add(path)
-    #         else:
-    #             if (args.recursive):
-    #                 full_paths += glob.glob(path + `'/*')

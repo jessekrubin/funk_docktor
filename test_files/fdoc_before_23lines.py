@@ -16,6 +16,7 @@ def main(): #$# main function called from name main thingy
             some_list.append(p) #$# append p to that list some list
     return sum(some_list) #$# return something liek the sum of the list
 
+
 if __name__ == '__main__': #$# if name is main
     result = main() #$# run main
     print("RESULT: {}".format(result)) #$# print and format the result
